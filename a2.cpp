@@ -115,7 +115,8 @@ void removeStopWords(std::vector<std::string> &tokens,
     // TODO: Implement this method.
     // approximate # of lines of code in Gerald's implementation: < 5
     for (string word : tokens) {
-
+        if(stopwords.find(word) != tokens.end())
+            tokens.erase(stopwords.find(word));
     }
 }
 
@@ -123,6 +124,9 @@ void removeWhiteSpaces(std::vector<std::string> &tokens) {
     // TODO: Implement this method.
     // approximate # of lines of code in Gerald's implementation: < 5
     // You may want to use the trim() method from the trim.*pp files in a2.
+    for(std::string word : tokens) {
+        trim(word);
+    }
 }
 
 void replaceHyphensWithSpaces(std::string &line) {
