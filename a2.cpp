@@ -31,8 +31,8 @@
 
 void cleanData(std::ifstream &inFile, std::ofstream &outFile,
                std::unordered_set<std::string> &stopwords) {
-
-    std::string line = inFile.getline();
+    std::string line;
+    std::getline(inFile, line);
     // TODO: Implement this method.
     // # of lines of code in Gerald's implementation: 13
     // Do the following operations on each review before
@@ -41,25 +41,65 @@ void cleanData(std::ifstream &inFile, std::ofstream &outFile,
 
     //   2. Split the line of text into individual words.
     std::vector<std::string> words;
+    std::vector<std::string> out;
     splitLine(line, words);
 
     //   3. Remove the punctuation marks from the words.
-    removePunctuation(words);
+    removePunctuation(words, out);
     //   4. Remove the trailing and the leading whitespaces in each word.
-    remove_if(str.begin(), str.end(), isspace);
+    removeWhiteSpaces(words);
     //   5. Remove the empty words
-    removeEmptyWords(vector);
+    removeEmptyWords(words);
     //   6. Remove words with just one character in them. You should NOT remove
     //      numbers in this step because if you do so, you'll lose the ratings.
-    removeSingleLetterWords(vector);
+    removeSingleLetterWords(words);
     //   7. Remove stopwords.
-    removeStopWords(vector);
+    removeStopWords(words, stopwords);
+
+
 }
 
 void fillDictionary(std::ifstream &newInFile,
                     std::unordered_map<std::string, std::pair<long, long>> &dict) {
     // TODO: Implement this method.
     // approximate # of lines of code in Gerald's implementation: < 20
+    // Vector to contain all the reviews
+    std::vector<std::string> reviews;
+
+    // Read the inFile and save each line to vector reviewLines
+    std::string line;
+    while (true) {
+        getline(newInFile, line);
+        if (newInFile.fail()) break;
+        reviews.push_back(line);
+    }
+
+    // For each review
+    for (std::string review : reviews) {
+
+        // Create a vector of all the words in the review
+        std::vector<std::string> words;
+        splitLine(review, words);
+
+        // Convert the score to an int
+        int score = std::stoi(words.at(0));
+        words.erase(words.begin());
+
+        // For each word in the review
+        for (const std::string& word : words) {
+
+            // Add or update the word's entry in the dictionary
+            if (dict.count(word)) {
+                dict[word].first = dict[word].first + score;
+                ++dict[word].second;
+            } else {
+                std::pair <long, long> wordScores;
+                wordScores.first = score;
+                wordScores.second = 1;
+                dict[word] = wordScores;
+            }
+        }
+    }
 }
 
 
@@ -67,6 +107,12 @@ void fillStopWords(std::ifstream &inFile,
                    std::unordered_set<std::string> &stopwords) {
     // TODO: Implement this method.
     // approximate # of lines of code in Gerald's implementation: < 5
+    std::string line;
+    while (true) {
+        getline(inFile, line);
+        if (inFile.fail()) break;
+        stopwords.insert(line);
+    }
 }
 
 void rateReviews(std::ifstream &testFile,
@@ -74,14 +120,55 @@ void rateReviews(std::ifstream &testFile,
                  std::ofstream &ratingsFile) {
     // TODO: Implement this method.
     // approximate # of lines of code in Gerald's implementation: < 20
+    while (true) {
+
+        // Save the next review to variable line
+        std::string line;
+        getline(testFile, line);
+
+        // Break out of the loop when it reaches the end of the file
+        if (testFile.fail()) break;
+
+        // Split the line into individual words
+        std::vector<std::string> words;
+        splitLine(line, words);
+
+        // The expected review score (before dividing by the # of words)
+        double unaveragedReviewScore = 0;
+
+        // For each word in the review
+        for (std::string& word : words) {
+
+            // Add the word's average score if it exists, otherwise add 2
+            if (dict.count(word) > 0) {
+                double averageScoreForWord = ((double)dict[word].first / (double)dict[word].second);
+                unaveragedReviewScore = unaveragedReviewScore + averageScoreForWord;
+            } else {
+                unaveragedReviewScore = unaveragedReviewScore + 2;
+            }
+        }
+
+        // The expected score for this review
+        double expectedScore;
+
+        // Take the per-word average of unaveragedReviewScore, unless there were 0 words
+        if (words.size() == 0) {
+            expectedScore = 2;
+        } else {
+            expectedScore = (double)unaveragedReviewScore / words.size();
+        }
+
+        // Write the expected score to the rating file
+        ratingsFile << std::setprecision(2) << std::fixed << expectedScore << std::endl;
+    }
 }
 
 void removeEmptyWords(std::vector<std::string> &tokens) {
     // TODO: Implement this method.
     // approximate # of lines of code in Gerald's implementation: < 5
-    for (string word : tokens) {
-        if (word.size() == 0 and !(isdigit(atoi(word.c_str())))) {
-            tokens.erase(word);
+    std::vector <std::string>::iterator itr;
+    for (itr = tokens.begin(); itr != tokens.end(); ++itr) {
+        if ((*itr).size() == 0 and !(isdigit(atoi((*itr).c_str())))) {
         }
     }
 }
@@ -91,33 +178,38 @@ void removePunctuation(std::vector<std::string> &inTokens,
     // TODO: Implement this method.
     // approximate # of lines of code in Gerald's implementation: < 10
     int i = 0;
-    for (string word : inTokens) {
-        if (ispunct(word[i]))
-        {
-            line.erase(i--, 1);
-            len = line.size();
+    for (std::string word : inTokens) {
+        for (int i = 0, len = word.size(); i < len; i++) {
+            if (ispunct(word[i])) {
+                word.erase(i--, 1);
+                outTokens.push_back(word);
+                len = word.size();
+            }
         }
-        i++;
     }
 }
 
 void removeSingleLetterWords(std::vector<std::string> &tokens) {
     // TODO: Implement this method.
     // approximate # of lines of code in Gerald's implementation: < 5
-    for (string word : tokens) {
-        if (word.size() == 1 and !(isdigit(atoi(word.c_str()))))
-           tokens.erase(word);
+    for (std::string word : tokens) {
+        if (word.size() == 1 and !(isdigit(atoi(word.c_str())))) {
+            std::vector<std::string>::iterator itr = tokens.begin();
+            if (itr != tokens.end() and !(isdigit(atoi((*itr).c_str())))) tokens.erase(itr);
+        }
     }
+
 }
 
 void removeStopWords(std::vector<std::string> &tokens,
                      std::unordered_set<std::string> &stopwords) {
     // TODO: Implement this method.
     // approximate # of lines of code in Gerald's implementation: < 5
-    for (string word : tokens) {
-        if(stopwords.find(word) != tokens.end())
-            tokens.erase(stopwords.find(word));
+    for (const std::string& word : stopwords) {
+        // Remove all occurrences of it in the review
+        tokens.erase(std::remove(tokens.begin(), tokens.end(), word), tokens.end());
     }
+
 }
 
 void removeWhiteSpaces(std::vector<std::string> &tokens) {
@@ -132,13 +224,18 @@ void removeWhiteSpaces(std::vector<std::string> &tokens) {
 void replaceHyphensWithSpaces(std::string &line) {
     // TODO: Implement this method.
     // approximate # of lines of code in Gerald's implementation: < 5
-    if(inFile.is_open()) {
-        replace( line.begin(), line().end(), '-', ' ');
-    }
+    std::replace(line.begin(), line.end(), '-', ' ');
 }
 
 void splitLine(std::string &line, std::vector<std::string> &words) {
     // TODO: Implement this method.
     // approximate # of lines of code in Gerald's implementation: < 10
-    splitLine(line, words, ' ');
+    std::stringstream ss;
+    ss.str(line);
+    std::string token;
+    while (std::getline(ss, token, ' ')) {
+        if (token.length() != 0) {
+            words.push_back(token);
+        }
+    }
 }

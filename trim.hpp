@@ -19,7 +19,6 @@
 
 #include <cctype>
 #include <string>
-/Users/benklonowski/Library/Preferences/CLion2017.3/scratches/trim.cpp
 /**
  * @brief Trims the whitespace on the left side of the string.
  *
